@@ -8,9 +8,8 @@ namespace std {
 }
 #endif
 
-
 #if !defined(NDEBUG)
-#define LUADEBUG_ENABLE_LOG 1
+#    define LUADEBUG_ENABLE_LOG 1
 #endif
 
 namespace luadebug::log {
@@ -29,8 +28,7 @@ namespace luadebug::log {
     }
 #else
     template <typename... T>
-    inline void info(std::format_string<T...> fmt, T&&... args)
-    {}
+    inline void info(std::format_string<T...> fmt, T&&... args) {}
 #endif
 
     template <typename... T>
