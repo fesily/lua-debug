@@ -1,11 +1,11 @@
 local lm = require "luamake"
 
 local luaver = "luajit"
-local luajitDir = '3rd/lua/' .. luaver
+local luajitDir = '3rd/lua/'..luaver
 local bindir = "publish/runtime/"..lm.runtime_platform
 
 lm:exe "minilua" {
-    rootdir= luajitDir,
+    rootdir = luajitDir,
     defines = "_CRT_SECURE_NO_WARNINGS",
     sources = {
         "src/host/minilua.c"
@@ -24,31 +24,33 @@ local dynasm_flags = {
     "-D", "FFI",
     "-D", "WIN",
 }
-if arch =="x64" then
-    table.insert(dynasm_flags,"-D")
-    table.insert(dynasm_flags,"P64")
+if arch == "x64" and not lm.nogc64 then
+    table.insert(dynasm_flags, "-D")
+    table.insert(dynasm_flags, "P64")
 end
 
 
 local buildvm_arch_input = "src/vm_x64.dasc"
-if arch == "x86" then
+if arch == "x86" or lm.nogc64 then
     buildvm_arch_input = "src/vm_x86.dasc"
 end
 
+local LUAJIT_DISABLE_GC64 = lm.nogc64 and "LUAJIT_DISABLE_GC64"
+
 lm:build "buildvm_arch" {
     deps = "minilua",
-    lm.bindir .. "/minilua", luajitDir.."/dynasm/dynasm.lua",
+    lm.bindir.."/minilua", luajitDir.."/dynasm/dynasm.lua",
     dynasm_flags,
     "-o", "$out", "$in",
     input = luajitDir.."/"..buildvm_arch_input,
-    output =  lm.bindir .."/buildvm_arch.h",
+    output = lm.bindir.."/buildvm_arch.h",
 }
 
 lm:exe "buildvm" {
-    rootdir= luajitDir,
+    rootdir = luajitDir,
     deps = "buildvm_arch",
-    objdeps={"buildvm_arch"},
-    defines = {"_CRT_SECURE_NO_WARNINGS"},
+    objdeps = { "buildvm_arch" },
+    defines = { "_CRT_SECURE_NO_WARNINGS", LUAJIT_DISABLE_GC64 },
     includes = {
         "src",
         "../../../"..lm.bindir
@@ -76,16 +78,16 @@ local LJLIB = {
 
 lm:build "lj_peobj" {
     deps = "buildvm",
-    lm.bindir .. "/buildvm",
+    lm.bindir.."/buildvm",
     "-m", "peobj",
     "-o", "$out",
     output = lm.bindir.."/lj_vm.obj",
 }
 
 lm:build "lj_bcdef" {
-    rootdir=luajitDir,
+    rootdir = luajitDir,
     deps = "buildvm",
-    lm.bindir .. "/buildvm",
+    lm.bindir.."/buildvm",
     "-m", "bcdef",
     "-o", "$out", "$in",
     output = lm.bindir.."/lj_bcdef.h",
@@ -93,9 +95,9 @@ lm:build "lj_bcdef" {
 }
 
 lm:build "lj_ffdef" {
-    rootdir=luajitDir,
+    rootdir = luajitDir,
     deps = "buildvm",
-    lm.bindir .. "/buildvm",
+    lm.bindir.."/buildvm",
     "-m", "ffdef",
     "-o", "$out", "$in",
     output = lm.bindir.."/lj_ffdef.h",
@@ -103,9 +105,9 @@ lm:build "lj_ffdef" {
 }
 
 lm:build "lj_libdef" {
-    rootdir=luajitDir,
+    rootdir = luajitDir,
     deps = "buildvm",
-    lm.bindir .. "/buildvm",
+    lm.bindir.."/buildvm",
     "-m", "libdef",
     "-o", "$out", "$in",
     output = lm.bindir.."/lj_libdef.h",
@@ -113,9 +115,9 @@ lm:build "lj_libdef" {
 }
 
 lm:build "lj_recdef" {
-    rootdir=luajitDir,
+    rootdir = luajitDir,
     deps = "buildvm",
-    lm.bindir .. "/buildvm",
+    lm.bindir.."/buildvm",
     "-m", "recdef",
     "-o", "$out", "$in",
     output = lm.bindir.."/lj_recdef.h",
@@ -133,7 +135,7 @@ lm:build "lj_recdef" {
 
 lm:build "lj_folddef" {
     deps = "buildvm",
-    lm.bindir .. "/buildvm",
+    lm.bindir.."/buildvm",
     "-m", "folddef",
     "-o", "$out", "$in",
     output = lm.bindir.."/lj_folddef.h",
@@ -144,7 +146,7 @@ lm:build "lj_folddef" {
 
 
 lm:shared_library "luajit/luajit" {
-    rootdir= luajitDir,
+    rootdir = luajitDir,
     bindir = bindir,
     objdeps = {
         "lj_bcdef",
@@ -156,33 +158,35 @@ lm:shared_library "luajit/luajit" {
     },
     defines = {
         "_CRT_SECURE_NO_WARNINGS",
-        "LUA_BUILD_AS_DLL"
+        "LUA_BUILD_AS_DLL",
+        LUAJIT_DISABLE_GC64
     },
     sources = {
         "!src/luajit.c",
         "!src/lj_init.c",
         "src/lj_*.c",
         "src/lib_*.c",
-        "../../../".. lm.bindir.."/lj_vm.obj",
+        "../../../"..lm.bindir.."/lj_vm.obj",
     },
-    includes={
+    includes = {
         ".",
         "../../../"..lm.bindir
     }
 }
 
 lm:exe "luajit/lua" {
-    rootdir= luajitDir,
+    rootdir = luajitDir,
     bindir = bindir,
-   deps="luajit/luajit",
+    deps = "luajit/luajit",
     defines = {
         "_CRT_SECURE_NO_WARNINGS",
+        LUAJIT_DISABLE_GC64
     },
     sources = {
         "src/luajit.c",
         "src/lj_init.c",
     },
-    includes={
+    includes = {
         ".",
         "../../../"..lm.bindir
     }

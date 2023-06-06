@@ -11,7 +11,8 @@ lm:build "x86_64" {
     args = {
         "-builddir", "build/win32-x64/"..lm.mode,
         "-runtime_platform", "win32-x64",
-        "-arch", "x86_64"
+        "-arch", "x86_64",
+        lm.nogc64 and "-nogc64",
     },
 }
 
