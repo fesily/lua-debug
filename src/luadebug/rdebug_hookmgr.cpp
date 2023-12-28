@@ -13,7 +13,7 @@
 
 #if LUA_VERSION_NUM >= 502
 #    include <lstate.h>
-#    if defined(LUA_VERSION_LATEST)
+#    if LUA_VERSION_NUM >= 504
 #        define LUA_STKID(s) s.p
 #    else
 #        define LUA_STKID(s) s
@@ -392,12 +392,16 @@ struct hookmgr {
 #    endif
                 updatehookmask(hL);
                 last_hook_call_in_c = false;
+                if (break_mask)
+                    break_hook_call(hL, ar);
             }
             if (stepL == hL) {
                 if (step_mask & LUA_MASKRET) {
                     step_hook_line(hL, ar);
                 }
             }
+            if (!((step_mask & LUA_MASKLINE) && (!stepL || stepL == hL)) && !(break_mask & LUA_MASKLINE))
+                return;
 #endif
             break;
         case LUA_HOOKCALL:
