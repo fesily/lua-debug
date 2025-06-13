@@ -34,6 +34,7 @@ local function initMaster(rootpath, address)
     ExitGuard = setmetatable({}, {__gc=function()
         chan:push(nil, "EXIT")
         thread.wait(mt)
+        channel.destroy("DbgMaster")
     end})
 end
 
