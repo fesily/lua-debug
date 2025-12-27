@@ -2,7 +2,8 @@ local lm = require "luamake"
 
 lm.rootdir = "../../3rd/bee.lua"
 
-lm:lua_src "source_bee" {
+lm:source_set "source_bee" {
+    includes = "3rd/lua55",
     sources = "3rd/lua-seri/lua-seri.cpp",
     msvc = {
         flags = "/wd4244"
@@ -43,7 +44,7 @@ end
 lm:source_set "source_bee" {
     includes = {
         ".",
-        "3rd/lua/",
+        "3rd/lua55/",
     },
     sources = "bee/**/*.cpp",
     windows = {
@@ -67,9 +68,12 @@ lm:source_set "source_bee" {
         }
     },
     linux = {
-        sources = need {
-            "linux",
-            "posix",
+        sources = {
+            "!bee/crash/linux/**/",
+            need {
+                "linux",
+                "posix",
+            }
         }
     },
     android = {
@@ -101,8 +105,8 @@ lm:source_set "source_bee" {
     }
 }
 
-lm:lua_src "source_bee" {
-    includes = ".",
+lm:source_set "source_bee" {
+    includes = { "3rd/lua55", "." },
     defines = {
         lm.EXE ~= "lua" and "BEE_STATIC",
     },
@@ -135,8 +139,6 @@ lm:lua_src "source_bee" {
         ldflags = "-pthread",
         links = {
             "stdc++fs",
-            "unwind",
-            "bfd",
         }
     },
     macos = {
@@ -175,9 +177,9 @@ lm:source_set "source_lua" {
 }
 
 lm:source_set "source_lua" {
-    includes = "3rd/lua",
+    includes = "3rd/lua55",
     sources = {
-        "3rd/lua/onelua.c",
+        "3rd/lua55/onelua.c",
     },
     defines = "MAKE_LIB",
     windows = {
@@ -224,7 +226,7 @@ lm:source_set "source_bootstrap" {
         "source_bee",
         "source_lua",
     },
-    includes = { "3rd/lua", "." },
+    includes = { "3rd/lua55", "." },
     sources = {
         "bootstrap/main.cpp",
         "bootstrap/bootstrap_init.cpp",

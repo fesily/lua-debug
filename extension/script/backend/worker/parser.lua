@@ -2,17 +2,6 @@ local undump = require 'backend.worker.undump'
 
 local version
 
-local function getproto(content)
-    local f = load(content)
-    if not f then
-        return
-    end
-    local bin = string.dump(f)
-    local cl, v = undump(bin)
-    version = v
-    return cl.f
-end
-
 local function nextline(proto, abs, currentline, pc)
     local line = proto.lineinfo[pc]
     if line == -128 then
@@ -32,7 +21,8 @@ local function getactivelines(proto)
         end
         local start = 1
         if proto.is_vararg > 0 then
-            assert(proto.code[1] & 0x7F == 81) -- OP_VARARGPREP
+            local OP_VARARGPREP = version >= 0x55 and 83 or 81
+            assert(proto.code[1] & 0x7F == OP_VARARGPREP)
             currentline = nextline(proto, abs, currentline, 1)
             start = 2
         end
@@ -95,13 +85,18 @@ local function normalize(lineinfo, si)
 end
 
 return function (content)
-    local proto = getproto(content)
-    if not proto then
+    local f, err = load(content)
+    if not f then
+        local log = require 'common.log'
+        log.error("ERROR:"..err)
         return
     end
+    local bin = string.dump(f)
+    local cl, v = undump(bin)
+    version = v
     local si = { activelines = {}, definelines = {} }
     local lineinfo = {}
-    calclineinfo(proto, lineinfo, si)
+    calclineinfo(cl.f, lineinfo, si)
     normalize(lineinfo, si)
     return lineinfo
 end

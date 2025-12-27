@@ -5,7 +5,7 @@ local OS, ARCH = platform:match "^([^-]+)-([^-]+)$"
 
 local json = {
     name = "lua-debug",
-    version = "2.0.12",
+    version = "2.2.2",
     publisher = "actboy168",
     displayName = "Lua Debug",
     description = "VSCode debugger extension for Lua",
@@ -157,6 +157,7 @@ attributes.common = {
             "lua52",
             "lua53",
             "lua54",
+            "lua55",
             "lua-latest",
             "luajit",
         },
@@ -279,7 +280,12 @@ attributes.attach = {
         default = "lua.exe",
         markdownDescription = "Name of process to attach to.",
         type = "string",
-    }
+    },
+    waitForDebugger = {
+        default = false,
+        markdownDescription = "Wait for debugger to attach. (It needs to be implemented in the debugging host.)",
+        type = "boolean",
+    },
 }
 
 json.contributes.debuggers[1].variables = {
@@ -475,12 +481,12 @@ for _, name in ipairs { "luaArch", "luaVersion", "sourceCoding", "console", "pat
         local cfg = {}
         for k, v in pairs(attr) do
             if k == 'markdownDescription' then
-                k = 'description'
+                cfg['description'] = v
+            elseif k == 'enummarkdownDescriptions' then
+                cfg['enumDescriptions'] = v
+            else
+                cfg[k] = v
             end
-            if k == 'enummarkdownDescriptions' then
-                k = 'enumDescriptions'
-            end
-            cfg[k] = v
         end
         configuration["lua.debug.settings."..name] = cfg
     end

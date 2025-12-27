@@ -4,7 +4,7 @@
 
 ## Requirements
 
-* Lua 5.1 - 5.4 or luajit (thanks [@fesily](https://github.com/fesily))
+* Lua 5.1 - 5.5 or luajit (thanks [@fesily](https://github.com/fesily))
 * Platform: Windows, macOS, Linux, Android, NetBSD, FreeBSD
 
 ## Feature
@@ -53,7 +53,7 @@ luamake -mode release
 
 ## Install to VSCode
 
-1. Install extension `actboy168.lua-debug` and `actboy168.extension-path`
+1. Install extension `actboy168.lua-debug`
 2. Open [repo](https://github.com/actboy168/lua-debug) in VSCode
 3. Run task：Copy Publish
 

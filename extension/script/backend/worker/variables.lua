@@ -500,7 +500,7 @@ local function varGetUserdata(value, allow_lazy)
             else
                 local ok, res = rdebug.eval(fn, value)
                 if ok then
-                    return res
+                    return res, "userdata"
                 else
                     return "__tostring error: "..res, "userdata"
                 end
@@ -554,7 +554,10 @@ local function varGetValue(context, allow_lazy, v)
         end
         return varGetTableValue(v), 'table'
     elseif type == 'userdata' then
-        return varGetUserdata(v, allow_lazy)
+        if context == "variables" then
+            return varGetUserdata(v, allow_lazy)
+        end
+        return varGetUserdata(v, false)
     elseif type == 'lightuserdata' then
         return 'light'..tostring(value), 'lightuserdata'
     elseif type == 'thread' then
@@ -576,8 +579,11 @@ local function varGetValue(context, allow_lazy, v)
     return ("%s: %s"):format(type, value), type
 end
 
-local function varCreateReference(value, evaluateName, presentationHint, context)
-    local valuestr, type, lazy = varGetValue(context, true, value)
+local function varCreateReference(value, evaluateName, presentationHint, context, allow_lazy)
+    local valuestr, type, lazy = varGetValue(context, allow_lazy, value)
+    if lazy == nil then
+        lazy = false
+    end
     local result = {
         type = type,
         value = valuestr,
@@ -594,12 +600,12 @@ local function varCreateReference(value, evaluateName, presentationHint, context
         }
         result.memoryReference = #memoryRefPool
     end
-    if varCanExtand(type, value) or result.presentationHint.lazy then
+    if varCanExtand(type, value) then
         varPool[#varPool + 1] = {
             v = value,
             eval = evaluateName,
-            lazy = result.presentationHint.lazy,
             context = context,
+            lazy = result.presentationHint.lazy,
         }
         result.variablesReference = #varPool
         if type == "table" then
@@ -643,6 +649,9 @@ local function varCreateTableKV(key, value, context)
         special = "TableKV",
     }
     local valuestr, _, lazy = varGetValue(context, true, value)
+    if lazy == nil then
+        lazy = false
+    end
     return {
         type = 'TableKV',
         value = valuestr,
@@ -686,7 +695,7 @@ local function varCreate(t)
     if type(t.evaluateName) ~= "string" then
         t.evaluateName = nil
     end
-    local var = varCreateReference(t.value, t.evaluateName, t.presentationHint or {}, "variables")
+    local var = varCreateReference(t.value, t.evaluateName, t.presentationHint or {}, "variables", true)
     var.name = name
     var.evaluateName = t.evaluateName
     vars[#vars + 1] = var
@@ -923,6 +932,29 @@ local function extandUserdata(varRef)
                 }
             }
         end
+    end
+
+    local loct = rdebug.userdata_pairs(u)
+    if loct then
+        local members = {}
+        for i = 1, #loct, 3 do
+            local key, value, valueref = loct[i], loct[i + 1], loct[i + 2]
+            local key_type = rdebug.type(key)
+            if varCanExtand(key_type, key) then
+                members[#members + 1] = varCreateTableKV(key, value, "variables")
+            else
+                varCreate {
+                    vars = members,
+                    varRef = varRef,
+                    name = varGetName(key),
+                    value = value,
+                    evaluateName = evaluateTabelKey(evaluateName, key),
+                    calcValue = function() return valueref end,
+                }
+            end
+        end
+        table.sort(members, function(a, b) return a.name < b.name end)
+        table.move(members, 1, #members, #vars + 1, vars)
     end
     return vars
 end
@@ -1252,6 +1284,10 @@ local function extandCData(varRef)
 end
 
 local function extandValue(varRef, filter, start, count)
+    if varRef.lazy then
+        local var = varCreateReference(varRef.v, varRef.eval, {}, varRef.context, false)
+        return { var }
+    end
     if varRef.special then
         return special_extand[varRef.special](varRef, filter, start, count)
     end
@@ -1306,7 +1342,7 @@ local function setValue(varRef, name, value)
             end
         end
     end
-    return varCreateReference(rvalue, evaluateName, {}, "variables")
+    return varCreateReference(rvalue, evaluateName, {}, "variables", true)
 end
 
 local m = {}
@@ -1329,17 +1365,7 @@ function m.extand(valueId, filter, start, count)
     if not varRef then
         return nil, 'Error variablesReference'
     end
-    local vars = extandValue(varRef, filter, start, count)
-    if varRef.lazy then
-        --TODO: fuck VSCode
-        local valuestr, type = varGetValue(varRef.context, false, varRef.v)
-        table.insert(vars, 1, {
-            name = "",
-            type = type,
-            value = valuestr,
-        })
-    end
-    return vars
+    return extandValue(varRef, filter, start, count)
 end
 
 function m.set(valueId, name, value)
@@ -1436,7 +1462,7 @@ function m.createText(value, context)
 end
 
 function m.createRef(value, evaluateName, context)
-    return varCreateReference(value, evaluateName, {}, context)
+    return varCreateReference(value, evaluateName, {}, context, true)
 end
 
 function m.tostring(v)

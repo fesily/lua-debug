@@ -11,7 +11,7 @@ local bindir = "publish/runtime/"..lm.runtime_platform
 
 lm:source_set 'onelua' {
     includes = {
-        "3rd/bee.lua/3rd/lua/",
+        "3rd/bee.lua/3rd/lua55/",
         "3rd/bee.lua/",
         "src/luadebug/",
     },
@@ -41,7 +41,7 @@ lm:source_set 'luadbg' {
     includes = {
         "src/luadebug",
         "3rd/bee.lua",
-        "3rd/bee.lua/3rd/lua",
+        "3rd/bee.lua/3rd/lua55",
     },
     sources = {
         "src/luadebug/luadbg/*.cpp",
@@ -68,6 +68,7 @@ local compat <const> = {
     ["lua52"]          = "compat/5x",
     ["lua53"]          = "compat/5x",
     ["lua54"]          = "compat/5x",
+    ["lua55"]          = "compat/5x",
     ["lua-latest"]     = "compat/5x",
     ["luajit"]         = "compat/jit"
 }
@@ -76,6 +77,7 @@ for _, luaver in ipairs {
     "lua52",
     "lua53",
     "lua54",
+    "lua55",
     "luajit",
     "lua-latest",
 } do
