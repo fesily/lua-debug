@@ -14,11 +14,17 @@ namespace luadebug {
     }
 
     intptr_t lua_resolver::find_export(std::string_view name) const {
-        return (intptr_t)Gum::Process::module_find_export_by_name(module_name.data(), name.data());
+        if (!internal_handler) {
+            return 0;
+        }
+        return (intptr_t)(static_cast<Gum::Module*>(internal_handler)->find_export_by_name(name.data()));
     }
 
     intptr_t lua_resolver::find_symbol(std::string_view name) const {
-        return (intptr_t)Gum::Process::module_find_symbol_by_name(module_name.data(), name.data());
+        if (!internal_handler) {
+            return 0;
+        }
+        return (intptr_t)(static_cast<Gum::Module*>(internal_handler)->find_symbol_by_name(name.data()));
     }
 
     intptr_t lua_resolver::find(std::string_view name) const {
@@ -40,5 +46,18 @@ namespace luadebug {
             }
         }
         return 0;
+    }
+
+    lua_resolver::lua_resolver(const std::string_view& module_name)
+        : module_name(module_name) {
+        internal_handler = Gum::Process::find_module_by_name(module_name.data());
+    }
+
+    lua_resolver::~lua_resolver() {
+        if (internal_handler) {
+            auto m = static_cast<Gum::Module*>(internal_handler);
+            delete m;
+            internal_handler = nullptr;
+        }
     }
 }

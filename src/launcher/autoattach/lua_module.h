@@ -4,6 +4,7 @@
 #include <resolver/lua_resolver.h>
 
 #include <string>
+#include <memory>
 
 namespace luadebug::autoattach {
     struct watchdog;
@@ -22,7 +23,7 @@ namespace luadebug::autoattach {
         void* memory_address = 0;
         size_t memory_size   = 0;
         lua_version version  = lua_version::unknown;
-        lua_resolver resolver;
+        std::unique_ptr<lua_resolver> resolver;
         work_mode mode;
         struct watchdog* watchdog = nullptr;
 

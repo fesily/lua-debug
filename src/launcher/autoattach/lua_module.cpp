@@ -49,16 +49,17 @@ namespace luadebug::autoattach {
 
     static lua_version get_lua_version(const lua_module& m) {
         /*
-            luaJIT_version_2_1_0_beta3
-            luaJIT_version_2_1_0_beta2
-            luaJIT_version_2_1_0_beta1
-            luaJIT_version_2_1_0_alpha
+            luaJIT_version_2_1_*
         */
-        for (void* addr : Gum::SymbolUtil::find_matching_functions("luaJIT_version_2_1_0*", true)) {
+        for (void* addr : Gum::SymbolUtil::find_matching_functions("luaJIT_version_2_1_*", true)) {
             if (in_module(m, addr))
                 return lua_version::luajit;
         }
-        auto p = Gum::Process::module_find_symbol_by_name(m.path.c_str(), "lua_ident");
+        auto gm = Gum::Process::find_module_by_name(m.path.c_str());
+        if (!gm) {
+            return lua_version::unknown;
+        }
+        auto p = gm->find_symbol_by_name("lua_ident");
         ;
         const char* lua_ident = (const char*)p;
         if (!lua_ident)
@@ -96,8 +97,9 @@ namespace luadebug::autoattach {
     }
 
     bool lua_module::initialize() {
-        resolver.module_name = path;
-        auto error_msg       = lua::initialize(resolver);
+        resolver           = std::make_unique<lua_resolver>(path);
+        lua::resolver& ref = *resolver;
+        auto error_msg     = lua::initialize(ref);
         if (error_msg) {
             log::fatal("lua initialize failed, can't find {}", error_msg);
             return false;
@@ -105,7 +107,7 @@ namespace luadebug::autoattach {
         version = get_lua_version(*this);
         log::info("current lua version: {}", lua_version_to_string(version));
 
-        watchdog = create_watchdog(mode, version, resolver);
+        watchdog = create_watchdog(mode, version, ref);
         if (!watchdog) {
             return false;
         }
