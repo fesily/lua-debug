@@ -178,6 +178,23 @@ local function verifyBreakpointByLineInfo(src, breakpoints)
     end
 end
 
+-- 降级模式：无 lineinfo 时跳过行号校正，直接标记断点为 verified
+local function verifyBreakpointWithoutLineInfo(src, breakpoints)
+    for _, bp in ipairs(breakpoints) do
+        if bp.unverified ~= nil then
+            goto continue
+        end
+        bp.source = src
+        bp.verified = true
+        ev.emit('breakpoint', 'changed', {
+            id = bp.id,
+            line = bp.line,
+            verified = true,
+        })
+        ::continue::
+    end
+end
+
 function m.find(src, currentline)
     local currentBP = currentactive[bpKey(src)]
     if not currentBP then
@@ -248,9 +265,17 @@ function m.set_bp(clientsrc, breakpoints, content)
                 verifyBreakpointByLineInfo(src, breakpoints)
                 updateBreakpoint(src, breakpoints)
             end
+        elseif content == false then
+            -- 降级路径：前端已上报但 sourceContent 为空
+            for _, src in ipairs(srcarray) do
+                verifyBreakpointWithoutLineInfo(src, breakpoints)
+                updateBreakpoint(src, breakpoints)
+            end
         else
             cantVerifyBreakpoints(breakpoints)
         end
+        waitverify[bpClientKey(clientsrc)] = nil
+        updateHook()
     else
         waitverify[bpClientKey(clientsrc)] = {
             breakpoints = breakpoints,
@@ -298,10 +323,16 @@ function m.newproto(proto, src, key)
     local bpkey = bpClientKey(src)
     local wv = waitverify[bpkey]
     if wv then
-        if not src.content then
+        if not wv.content then
             waitverify[bpkey] = nil
         end
         if not calcLineInfo(src, wv.content) then
+            if wv.content == false then
+                -- 降级路径：前端已上报但 sourceContent 为空
+                verifyBreakpointWithoutLineInfo(src, wv.breakpoints)
+                updateBreakpoint(src, wv.breakpoints)
+                return
+            end
             cantVerifyBreakpoints(wv.breakpoints)
             return
         end

@@ -69,7 +69,6 @@ lm:source_set "source_bee" {
     },
     linux = {
         sources = {
-            "!bee/crash/linux/**/",
             need {
                 "linux",
                 "posix",
@@ -136,9 +135,11 @@ lm:source_set "source_bee" {
         }
     },
     linux = {
-        ldflags = "-pthread",
+        ldflags = "-pthread -l:libbfd.a -l:libiberty.a -l:libsframe.a -l:libzstd.so -l:libz.so",
         links = {
             "stdc++fs",
+            "unwind",
+            "gcc_s"
         }
     },
     macos = {
@@ -181,7 +182,10 @@ lm:source_set "source_lua" {
     sources = {
         "3rd/lua55/onelua.c",
     },
-    defines = "MAKE_LIB",
+    defines = {
+        "MAKE_LIB",
+        "LUA_COMPAT_LOOPVAR",
+    },
     windows = {
         defines = "LUA_BUILD_AS_DLL",
     },
